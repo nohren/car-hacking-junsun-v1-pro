@@ -14,6 +14,14 @@ This is my annotated journey with the Junsun V1 Pro. It started with an enthusia
 
 **⚠️Precaution statement - replicate anything you learn here at your own risk!!!**
 
+```bash
+System info
+System platform: MT8163
+Build Number: AJ_2024.09.28.12_3_2224
+MCU_version: CVD1810-WJ_23.12.12_399
+
+```
+
 ## Root
 
 We want root!
@@ -33,9 +41,10 @@ In order to root, we need the boot.img so we can patch the kernel with root with
 
 ### Experiment
 
-Rather than guess, I decided to use mtkClient to read the memory and produce an exact scatter. With an exact scatter i can use SP Flash tools to read out the boot.img bytes and Magisk to create a new boot.img with root. Then use SP flash tool to write that new boot.img to ROM. And to do all this btw you have to be BROM mode. From wikipedia "BROM (Boot ROM) is a crucial component in embedded systems, responsible for the initial booting process when the device is powered on or reset". SP Flash Tools binary requires 🪟 windows or 🐧 linux. I chose to continue using my Macbook and use UTM to emulate x86 linux ........... RIP to me. I totally would have used windows if my laptop wasn't entirely dependent on its power cord.
+Rather than guess and brick 🧱, I decided to use mtkClient to read to actual layout and produce an exact scatter. With an exact scatter I can use SP Flash tools and Magisk with confidence. To do any of this though, I have to be in BROM mode first. From wikipedia "BROM (Boot ROM) is a crucial component in embedded systems, responsible for the initial booting process when the device is powered on or reset".
+As for SP Flash Tools, the binary requires 🪟 windows or 🐧 linux **x86 only**. I chose to continue using my Macbook and use UTM to emulate x86 linux ........... RIP 😭. I totally would have used windows if my laptop wasn't entirely dependent on its power cord.
 
-In the end UTM would have worked if it could handle rapidly appearing and disapearing usb connections, like say from a boot loop awaiting protocol handshake to enter BROM. Unfortunely for UTM 4.6.5, this is not the case. Likely there is some null pointer exception crashing things when the usb is no longer who UTM thought it was. UTM simply cannot handle it. I tried dowloading the "[nightly](https://github.com/utmapp/UTM/actions/runs/16120262973)" UTM from github actions at behest of ChatGPT and nope, macOS is not having it, not with unsigned apps.
+So I went the UTM route, which would have worked if it could handle rapidly appearing and disappearing usb connections, like say from a boot loop awaiting protocol handshake to enter BROM. Unfortunately for UTM 4.6.5, this is not the case. Likely there is some null pointer exception crashing things when the usb is no longer who UTM thought it was. UTM simply cannot handle the truth. I tried dowloading the "[nightly](https://github.com/utmapp/UTM/actions/runs/16120262973)" UTM from github actions at behest of ChatGPT and nope, macOS is not having it, not with unsigned apps. They be scary 👻 🔥💰🔥.
 
 Linux Quirks for SP FlashTools and MTK install
 
@@ -62,10 +71,9 @@ I will try again later with a battery functional windows machine.
 
 This is the place is where you can flash new firmware.
 
-1. 🔋 5V Signal - First we need to send 5V to the 4pin connector. Your headunit will not budge without it. You will need a **USB A male to USB A female 4pin**. I learned the hard way that USB A female to female will not transmit 5V signal and a USB male to USB male even though it will transmit the 5v won't fit onto the male harness receptor... you need a female for that. I spent the better part of 2 hours poking things with a multimeter diagnosing why 5V signal was so hard to get working. I found a usb A male to male that should supposedly help transmit 5V but even that did not transmit the 5V signal!!! 🤯. Apparently some cables are meant for data only and remove the power on purpose. So i took the 4pin that came with the radio, I cut off the USB A female head, and spliced those wires to the USB A male. Voila.
-2. Once 5V is hitting the unit, you are good to proceed to the next step. Cycling 12v power. First use a paper clip to depress **RST** for 2 seconds while keeping ignition in **LOW**. This makes sure the unit powers off. Now key the ignition to **ACC** for $<=0.5$ seconds and back to **LOW**. Do this 2 to 3 times and the display will no longer light up. You should see that the buttons now flash white every 10 seconds or so. Welcome to the boot loop.
-
-Since I was emulating Linux, I first recieved these signals on my macbook pro.
+1. 🔋 5V Signal - First things first, the 4pin connector ⬅️ needs to recieve 5V . Your headunit will not budge without it. Notice **I did not** say the 4pin connected ➡️ needs to send 5V (normal charging operation). In order to do this, you will need a **USB A male to USB A female 4pin**. I learned the hard way that USB A female to female **will not** transmit 5V signal and a USB male to USB male will transmit even though sometimes it won't. Yes you read that right. I spent the better part of 2 hours poking things with a multimeter diagnosing why 5V signal was so hard to get working. I found a usb A male to male that should supposedly transmit 5V but even that did not transmit the 5V signal!!! 🤯. Apparently some cables are meant for data only and remove the power on for safety reasons. To fix things for today, I took the 4pin that came with the radio, I cut off the USB A female head, and spliced the line onto a USB A male head. Voila, Houston we have liftoff 🔋.
+2. Once 5V is hitting the unit, we are good to proceed to the next step. Cycling 12v power. First use a paper clip to depress **RST** for 2 seconds while keeping ignition in the **OFF** position. This makes sure the unit powers off. Now with the key in the ignition turn from **OFF** to **ACC** for $<=0.5$ seconds and back to **OFF**. Do this 2 to 3 times and the display will no longer light up. You should see that the buttons now flash white every 10 seconds or so. Welcome to the boot loop. BTW OFF is actually LOW voltage. This is why the system stays on for a period of time, even without the keys in the ignition. Embedded systems, am I right? 🤖
+3. Look for a SIN. Since I was emulating Linux, I first recieved these signals on my macbook pro.
 
 ```bash
 >>> system_profiler SPUSBDataType
@@ -86,7 +94,7 @@ Since I was emulating Linux, I first recieved these signals on my macbook pro.
 
 ```
 
-3. Right now the machine is looping periodically showing up as `MT65xx Preloader` and then disapearing. Prep the machine for the protocol handshake which enters it to the golden land of BROM. Preparation code from MTK as follows. This code has mtk looking for the handshake.
+3. Send ACK - Right now the machine is looping periodically showing up as `MT65xx Preloader` and then disapearing. Prep the machine for the protocol handshake which enters it to the golden land of BROM. Preparation code from MTK as follows. This code has mtk looking for the handshake.
 
 **⚠️Nothing tested after this point!**
 
@@ -140,3 +148,31 @@ Open SP Flash Tools
 ## Car play tethering
 
 ... TBD rooting
+
+## Other interesting things
+
+Unlock developer menu - click on the build number 7 times in settings. Enter the current date as `(YYYY-MM-DD)` as password.
+
+Unlock car settings factory menu - click factory and enter password `000000`.
+
+Add a theme img - copy png's to flash drive. Paste them to head unit disk. Select image in display settings.
+
+Only the Zlink build that came with the device works. Not any upgrades. Perhaps the low level drivers are not compatible with the new Zlink builds.
+
+```bash
+Zlink:
+
+ID 808C028D9F7F6DC934DF67E4A4203C6F
+SN DF011853434133324710A55D16057B3B
+KEY HCZJWLAY6C4481
+PLATFORM
+HENGCHEN-AJ-tb8163p3_bsp
+WIRELESS
+CPW AAW
+DISPLAY
+1280x720-1280x720
+FEATURES
+CPL CPW AAL AAW QTL QTW AML AMW
+VERSION
+34696b9e4ef6323d7b9fcacb91627ec8ecd301dc
+```
