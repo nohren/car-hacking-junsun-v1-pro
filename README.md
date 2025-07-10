@@ -16,7 +16,10 @@ This is my annotated journey with the Junsun V1 Pro. It started with an enthusia
 
 ```bash
 System info
-System platform: MT8163 #<- MT stands for MEDIATEK, a popular SoC manufacturer.  what does SoC mean? System on a chip. This is a single chip that contains the CPU, GPU, RAM, and other components.
+System platform: MT8163 #<- MT stands for MEDIATEK,
+#a popular SoC manufacturer.
+#what does SoC mean? System on a chip.
+#This is a single chip that contains the CPU, GPU, RAM, and other components.
 Build Number: AJ_2024.09.28.12_3_2224
 MCU_version: CVD1810-WJ_23.12.12_399
 
