@@ -16,7 +16,7 @@ This is my annotated journey with the Junsun V1 Pro. It started with an enthusia
 
 ```bash
 System info
-System platform: MT8163
+System platform: MT8163 #<- MT stands for MEDIATEK, a popular SoC manufacturer.  what does SoC mean? System on a chip. This is a single chip that contains the CPU, GPU, RAM, and other components.
 Build Number: AJ_2024.09.28.12_3_2224
 MCU_version: CVD1810-WJ_23.12.12_399
 
@@ -37,13 +37,13 @@ Maybe if I can root, I can find where tethered carplay was turned off or forgott
 
 ### Overview
 
-In order to root, we need the boot.img so we can patch the kernel with root with Magisk tool. In order to read the boot image we need the precise scalar offset within the on board eMMC internal flash memory for boot img. We also would like its size. The eMMC memory is a byte[] array, 32gb in size. The next problem is I have no reliable sources on what that offset is. There is an online scatter found but its not even valid, as you can see in online_scatter.txt, the preloader and pgpt are supposedly located at the same offset 0x0. ⚠️ CAUTION — POTENTIAL FOR PERMANENT BRICKING. I can easily brick this Chinese marvel of engineering, cost efficiency, and android version spoofing forever by writing the wrong bytes to wrong offsets. (they claim android 13, it really runs 9. Marketing is a hell of a drug).
+In order to root, we need the boot.img so we can root patch the kernel with Magisk tool. In order to read the boot image we need the actual byte offset and size of boot img in memory. The devices eMMC memory is a byte[] array, 32gb in size. I have no reliable sources on what this offset is. I found an online twice mentioned scatter file for a similar build but that file does not load in SP Flash Tools and as you can see in online_scatter.txt, the preloader and pgpt are supposedly located at the same offset 0x0 ⛔️. ⚠️ CAUTION — POTENTIAL FOR PERMANENT BRICKING. I can easily brick this creatively engineered, cost efficient, android 13 spoofed chinese device forever by writing the wrong bytes to wrong offsets. (they claim android 13, it really runs 9. Marketing, am I right?).
 
 ### Experiment
 
-Rather than guess and brick 🧱, I decided to use mtkClient to read to actual layout and produce an exact scatter. With an exact scatter I can use SP Flash tools and Magisk with confidence. I found out later I can use MTK in place of SP Flash Tools with no scatter. The goal is to acheive BROM mode. From wikipedia "BROM (Boot ROM) is a crucial component in embedded systems, responsible for the initial booting process when the device is powered on or reset". As for SP Flash Tools, the binary requires 🪟 windows or 🐧 linux **x86 only**. I chose to continue using my Macbook and use UTM to emulate x86 linux ........... RIP 😭. My windows laptop doesn't survive without a power cord so not suitable for car hacking.
+Rather than guess and brick 🧱, I decided to use mtkClient to snoop around and read the actual memory layout. I'm supposed to be able to do this in something called BROM mode. From wikipedia "BROM (Boot ROM) is a crucial component in embedded systems, responsible for the initial booting process when the device is powered on or reset". As for SP Flash Tools, the original recommended tool of the sparse tutorial, this tool requires 🪟 windows or 🐧 linux **x86 only**. I chose to continue using my Macbook and use UTM to emulate x86 linux which was another interesting journey. My windows laptop doesn't survive without a power cord so its not suitable for car hacking, even though it appears Windows is very popular with hacking tools.
 
-I chose UTM as my Linux x86 emulator, a popular wrapper on top of the QEMU library. I initially encountered a problem with UTM default USB passthrough. The head unit in preloader mode appears for a few seconds and disappears for a few seconds and repeating this pattern indefinitely. This is too much for UTM and it would crash when I selected to connect to usb passthrough and then the device would disappear. ChatGPT suggested I dowloading the "[nightly](https://github.com/utmapp/UTM/actions/runs/16120262973)" UTM from github actions as the newest triggered pipeline version had fixed this issue. Tempting quick fix, so I tried it, and ran into issues with macOS and not allowing unsigned apps. This led to a frenzy of AI back and forth on how to allow unsigned apps on macOS. But nothing worked. The actual fix came the next day after I had time to cool down and think. The issue seemed to be on the UTM side, but what about QEMU? QEMU is the underlying library after all. Maybe we can bypass UTM's USB handling. I also saw that we can pass QEMU arugments directly within UTM settings.
+I chose UTM as my Linux x86 emulator, a popular wrapper on top of the QEMU library. I initially encountered a problem with UTM's default USB passthrough. Due to the intermittent signal of the head unit in preloader mode, UTM tries to connect and then crashes the head unit. ChatGPT suggested I dowloading the "[nightly](https://github.com/utmapp/UTM/actions/runs/16120262973)" UTM from github actions as the newest triggered pipeline version had fixed this issue. Tempting quick fix, so I tried it, and ran into issues with macOS and not allowing unsigned apps. This led to a frenzy of AI back and forth on how to allow unsigned apps on macOS. But nothing worked. The actual fix came the next day after I had time to cool down and think. The issue seemed to be on the UTM side, but what about QEMU? QEMU is the underlying library after all. Maybe we can bypass UTM's USB handling. I also saw that we can pass QEMU arugments directly within UTM settings.
 
 QEMU [documentation](https://www.qemu.org/docs/master/system/devices/usb.html#connecting-usb-devices)
 
@@ -84,7 +84,12 @@ Here are some commands I used to get SP Flash Tools and MTK working on UTM Linux
 
 This is the place is where you can flash new firmware.
 
-1. 🔋 5V Signal - First things first, the 4pin connector ⬅️ needs to recieve 5V . Your headunit will not budge without it. Notice **I did not** say the 4pin connected ➡️ needs to send 5V (normal charging operation). In order to do this, you will need a **USB A male to USB A female 4pin**. I learned the hard way that USB A female to female **will not** transmit 5V signal and a USB male to USB male will transmit even though sometimes it won't. Yes you read that right. I spent the better part of 2 hours poking things with a multimeter diagnosing why 5V signal was so hard to get working. I found a usb A male to male that should supposedly transmit 5V but even that did not transmit the 5V signal!!! 🤯. Apparently some cables are meant for data only and remove the power on for safety reasons. To fix things for today, I took the 4pin that came with the radio, I cut off the USB A female head, and spliced the line onto a USB A male head. Voila, Houston we have liftoff 🔋.
+1. 🔋 5V Signal - First things first, the 4pin connector ⬅️ needs to recieve 5V . The headunit will not budge without it. We will need a **USB A male to USB A female 4pin**.
+   Weird findings
+
+- USB A female to female did not transmit 5V signal from USB A male to USB A male. Perhaps those cables were funny. I spent the better part of 2 hours poking things with a multimeter diagnosing why 5V signal was so hard to get working 🤯. Apparently some cables are meant for data only and remove the power for safety reasons.
+- To fix things for today, I took the 4pin that came with the radio, I cut off the USB A female head, and spliced the line onto a USB A male head. Voila, Houston we have liftoff 🔋.
+
 2. Once 5V is hitting the unit, we are good to proceed to the next step. Cycling 12v power. First use a paper clip to depress **RST** for 2 seconds while keeping ignition in the **OFF** position. This makes sure the unit powers off. Now with the key in the ignition turn from **OFF** to **ACC** for $<=0.5$ seconds and back to **OFF**. Do this 2 to 3 times and the display will no longer light up. You should see that the buttons now flash white every 10 seconds or so. Welcome to the boot loop. BTW OFF is actually LOW voltage. This is why the system stays on for a period of time, even without the keys in the ignition. Embedded systems, am I right? 🤖
 3. Look for a SIN. Since I was emulating Linux, I first recieved these signals on my macbook pro.
 
@@ -432,26 +437,20 @@ Open SP Flash Tools
 - load the scatter file.
 - Click read and check the boot.img box.
 - Read boot.img.
-- write boot.img to a flash drive.
-- Save this somewhere in case you get into trouble.
 
-### Add root to boot.img
+## 🏴‍☠️ The rest TBD...
+[ ] Get a simple USB A male <-> USB A male cable of (amazon)[https://www.amazon.com/ZZHXSM-Adapter-Changer-Coupler-Converter/dp/B0BV5YBW2N/ref=sr_1_6?crid=2GXOEW65MK36H&dib=eyJ2IjoiMSJ9.H3TOI3q7jCEIU7_TacZY5TqE3uKL9d7rN7usTUx5xbtrkwJRlin-i01mmojXY1I5_Y-Sa_v_TXM19EpiFfeS2_P-2DXPKaUoTudrDbYzF8qe2A2gRAl_YsiPVOvNhLRAr-c63t1RU-9LkNdMkZ5-3JA2bKFKtYL1A-1PIp_6QJYkINXWrOF5Ffff3nxLCj7Skg2-4LFNQVA-lH2o0MWtLT1n0_DrES4a19tImaRTR7_j_CtJHwIvLSF4B6odulC0CQCKM1b27Ew7ga2jl1PzEfvhRYio1UAyspsdDGydx5Y.IE6UsgAYKy2JPlmCk2w7w0a5ho-ADAIAXwLRJgwD-RU&dib_tag=se&keywords=usb+a+male+usb+a+male&qid=1752126515&s=industrial&sprefix=usb+a+male+usb+a+mal%2Cindustrial%2C134&sr=1-6] .
+[ ] read boot.img via MTK.  Save in case of boot loop issues.
+[ ] Load boot.img onto head unit.
+[x] Download the [magisk](https://topjohnwu.github.io/Magisk/) apk onto the same flash drive.
+[x] Install the apk onto head unit.
+[ ] Generate root_boot.img by patching boot.img that we supplied with root kernel via Magisk.
+[ ] on macOS, write root_boot.img to eMMC memory using MTK client.
+[ ] Reboot the head unit.
+[ ] Verify if root is working by using a terminal emulator and running `su` command.
 
-- Download the [magisk](https://topjohnwu.github.io/Magisk/) apk onto the same flash drive.
-- Install the apk on your head unit.
-- Supply the boot.img to it.
-- Let it create a root_boot.img. Place that back onto the flash drive.
 
-### Write
 
-- Open SP Flash Tools
-- Load scatter file
-- Click on write or download
-- Check boot.img
-- give it root_boot.img
-- Download
-- Restart
-- Verify if working or not
 
 ## Car play tethering
 
