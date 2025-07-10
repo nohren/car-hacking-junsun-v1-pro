@@ -80,18 +80,21 @@ Here are some commands I used to get SP Flash Tools and MTK working on UTM Linux
 #apt install libfuse2 to get it to work. Otherwise it said it couldn’t find libfuse
 ```
 
-### Procedure for putting device in boot loop & BROM
+### Procedure for flashing the device
 
-This is the place is where you can flash new firmware.
+1. 🔋 5V Signal - First things first, the 4pin connector ⬅️ needs to recieve 5V . The headunit will not do what we want without it. The 5v signal tells it to prepare to be flashed.
 
-1. 🔋 5V Signal - First things first, the 4pin connector ⬅️ needs to recieve 5V . The headunit will not budge without it. We will need a **USB A male to USB A female 4pin**.
-   Weird findings
+Weird findings...
 
 - USB A female to female did not transmit 5V signal from USB A male to USB A male. Perhaps those cables were funny. I spent the better part of 2 hours poking things with a multimeter diagnosing why 5V signal was so hard to get working 🤯. Apparently some cables are meant for data only and remove the power for safety reasons.
 - To fix things for today, I took the 4pin that came with the radio, I cut off the USB A female head, and spliced the line onto a USB A male head. Voila, Houston we have liftoff 🔋.
 
-2. Once 5V is hitting the unit, we are good to proceed to the next step. Cycling 12v power. First use a paper clip to depress **RST** for 2 seconds while keeping ignition in the **OFF** position. This makes sure the unit powers off. Now with the key in the ignition turn from **OFF** to **ACC** for $<=0.5$ seconds and back to **OFF**. Do this 2 to 3 times and the display will no longer light up. You should see that the buttons now flash white every 10 seconds or so. Welcome to the boot loop. BTW OFF is actually LOW voltage. This is why the system stays on for a period of time, even without the keys in the ignition. Embedded systems, am I right? 🤖
-3. Look for a SIN. Since I was emulating Linux, I first recieved these signals on my macbook pro.
+Once 5V is hitting the unit, we are good to proceed to the next step.
+
+- While 5v is plugged in, use a paper clip to depress **RST** for 2 seconds while keeping ignition in the **OFF** position. You should see the buttons flash white every 10 seconds or so.
+- If you don't, then cycle the ignition. Turn from **OFF** to **ACC** for <= 0.5 seconds and back to **OFF**. Do this 2 to 3 times. You should see that the buttons now flash white every 10 seconds or so. This is the preloader mode. The device is now waiting for a connection from the computer.
+
+Look for a SIN. Since I was emulating Linux, I first recieved these signals on my macbook pro.
 
 ```bash
 >>> system_profiler SPUSBDataType
@@ -112,9 +115,7 @@ This is the place is where you can flash new firmware.
 
 ```
 
-3. Send ACK - Right now the machine is looping periodically showing up as `MT65xx Preloader` and then disapearing. Prep the machine for the protocol handshake which enters it to the golden land of BROM. Preparation code from MTK as follows. This code has mtk looking for the handshake.
-
-We are in preloader. And without scatter. Lets send the ACK to the device. This is the code that will send the ACK to the device and put it into BROM mode.
+Send ACK
 
 ```bash
 >>> mtk plstage \
@@ -418,7 +419,7 @@ struct.error: unpack requires a buffer of 2 bytes
 
 ```
 
-The limitation is now the hardware. I need to try a simple USB A male to USB A male off of amazon.
+The limitation is now the **hardware**. I need to try a simple USB A male to USB A male off of [amazon](https://www.amazon.com/ZZHXSM-Adapter-Changer-Coupler-Converter/dp/B0BV5YBW2N/ref=sr_1_6?crid=2GXOEW65MK36H&dib=eyJ2IjoiMSJ9.H3TOI3q7jCEIU7_TacZY5TqE3uKL9d7rN7usTUx5xbtrkwJRlin-i01mmojXY1I5_Y-Sa_v_TXM19EpiFfeS2_P-2DXPKaUoTudrDbYzF8qe2A2gRAl_YsiPVOvNhLRAr-c63t1RU-9LkNdMkZ5-3JA2bKFKtYL1A-1PIp_6QJYkINXWrOF5Ffff3nxLCj7Skg2-4LFNQVA-lH2o0MWtLT1n0_DrES4a19tImaRTR7_j_CtJHwIvLSF4B6odulC0CQCKM1b27Ew7ga2jl1PzEfvhRYio1UAyspsdDGydx5Y.IE6UsgAYKy2JPlmCk2w7w0a5ho-ADAIAXwLRJgwD-RU&dib_tag=se&keywords=usb+a+male+usb+a+male&qid=1752126515&s=industrial&sprefix=usb+a+male+usb+a+mal%2Cindustrial%2C134&sr=1-6).
 
 ### Read
 
@@ -428,19 +429,17 @@ Via MTK client, we can read the boot.img from the head unit. The command is as f
 mtk r boot boot.img
 ```
 
-Or via SP Flash Tools, load the scatter file first. If you don't have it, you should be able to create one with the GPT info.
+Or via SP Flash Tools...
 
-````bash
-
-Open SP Flash Tools
-
-- load the scatter file.
-- Click read and check the boot.img box.
-- Read boot.img.
+- load the scatter file first.
+- If you don't have it, you should be able to create one with the GPT info.
+- read mode and select the boot partition.
 
 ## 🏴‍☠️ The rest TBD...
-[ ] Get a simple USB A male <-> USB A male cable of (amazon)[https://www.amazon.com/ZZHXSM-Adapter-Changer-Coupler-Converter/dp/B0BV5YBW2N/ref=sr_1_6?crid=2GXOEW65MK36H&dib=eyJ2IjoiMSJ9.H3TOI3q7jCEIU7_TacZY5TqE3uKL9d7rN7usTUx5xbtrkwJRlin-i01mmojXY1I5_Y-Sa_v_TXM19EpiFfeS2_P-2DXPKaUoTudrDbYzF8qe2A2gRAl_YsiPVOvNhLRAr-c63t1RU-9LkNdMkZ5-3JA2bKFKtYL1A-1PIp_6QJYkINXWrOF5Ffff3nxLCj7Skg2-4LFNQVA-lH2o0MWtLT1n0_DrES4a19tImaRTR7_j_CtJHwIvLSF4B6odulC0CQCKM1b27Ew7ga2jl1PzEfvhRYio1UAyspsdDGydx5Y.IE6UsgAYKy2JPlmCk2w7w0a5ho-ADAIAXwLRJgwD-RU&dib_tag=se&keywords=usb+a+male+usb+a+male&qid=1752126515&s=industrial&sprefix=usb+a+male+usb+a+mal%2Cindustrial%2C134&sr=1-6] .
-[ ] read boot.img via MTK.  Save in case of boot loop issues.
+
+```bash
+[ ] Get a simple USB A male <-> USB A male cable of amazon .
+[ ] read boot.img via MTK. Save in case of boot loop issues.
 [ ] Load boot.img onto head unit.
 [x] Download the [magisk](https://topjohnwu.github.io/Magisk/) apk onto the same flash drive.
 [x] Install the apk onto head unit.
@@ -448,9 +447,7 @@ Open SP Flash Tools
 [ ] on macOS, write root_boot.img to eMMC memory using MTK client.
 [ ] Reboot the head unit.
 [ ] Verify if root is working by using a terminal emulator and running `su` command.
-
-
-
+```
 
 ## Car play tethering
 
@@ -458,13 +455,13 @@ Open SP Flash Tools
 
 ## Other interesting things
 
-Unlock developer menu - click on the build number 7 times in settings. Enter the current date as `(YYYY-MM-DD)` as password.
+- Unlock developer menu - click on the build number 7 times in settings. Enter the current date as `(YYYY-MM-DD)` as password.
 
-Unlock car settings factory menu - click factory and enter password `000000`.
+- Unlock car settings factory menu - click factory and enter password `000000`.
 
-Add a theme img - copy png's to flash drive. Paste them to head unit disk. Select image in display settings.
+- Add a theme img - copy png's to flash drive. Paste them to head unit disk. Select image in display settings.
 
-Only the Zlink build that came with the device works. Not any upgrades. Perhaps the low level drivers are not compatible with the newer Zlink builds. Some things feel very hardcoded.
+- Only the Zlink build that came with the device works. Not any upgrades. Perhaps the low level drivers are not compatible with the newer Zlink builds. Some things feel very hardcoded.
 
 ```bash
 Zlink:
@@ -482,4 +479,5 @@ FEATURES
 CPL CPW AAL AAW QTL QTW AML AMW
 VERSION
 34696b9e4ef6323d7b9fcacb91627ec8ecd301dc
-````
+
+```
