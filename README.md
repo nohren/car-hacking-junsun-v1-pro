@@ -41,12 +41,27 @@ In order to root, we need the boot.img so we can patch the kernel with root with
 
 ### Experiment
 
-Rather than guess and brick 🧱, I decided to use mtkClient to read to actual layout and produce an exact scatter. With an exact scatter I can use SP Flash tools and Magisk with confidence. To do any of this though, I have to be in BROM mode first. From wikipedia "BROM (Boot ROM) is a crucial component in embedded systems, responsible for the initial booting process when the device is powered on or reset".
-As for SP Flash Tools, the binary requires 🪟 windows or 🐧 linux **x86 only**. I chose to continue using my Macbook and use UTM to emulate x86 linux ........... RIP 😭. I totally would have used windows if my laptop wasn't entirely dependent on its power cord.
+Rather than guess and brick 🧱, I decided to use mtkClient to read to actual layout and produce an exact scatter. With an exact scatter I can use SP Flash tools and Magisk with confidence. I found out later I can use MTK in place of SP Flash Tools with no scatter. The goal is to acheive BROM mode. From wikipedia "BROM (Boot ROM) is a crucial component in embedded systems, responsible for the initial booting process when the device is powered on or reset". As for SP Flash Tools, the binary requires 🪟 windows or 🐧 linux **x86 only**. I chose to continue using my Macbook and use UTM to emulate x86 linux ........... RIP 😭. My windows laptop doesn't survive without a power cord so not suitable for car hacking.
 
-So I went the UTM route, which would have worked if it could handle rapidly appearing and disappearing usb connections, like say from a boot loop awaiting protocol handshake to enter BROM. Unfortunately for UTM 4.6.5, this is not the case. Likely there is some null pointer exception crashing things when the usb is no longer who UTM thought it was. UTM simply cannot handle the truth. I tried dowloading the "[nightly](https://github.com/utmapp/UTM/actions/runs/16120262973)" UTM from github actions at behest of ChatGPT and nope, macOS is not having it, not with unsigned apps. They be scary 👻 🔥💰🔥.
+I chose UTM as my Linux x86 emulator, a popular wrapper on top of the QEMU library. I initially encountered a problem with UTM default USB passthrough. The head unit in preloader mode appears for a few seconds and disappears for a few seconds and repeating this pattern indefinitely. This is too much for UTM and it would crash when I selected to connect to usb passthrough and then the device would disappear. ChatGPT suggested I dowloading the "[nightly](https://github.com/utmapp/UTM/actions/runs/16120262973)" UTM from github actions as the newest triggered pipeline version had fixed this issue. Tempting quick fix, so I tried it, and ran into issues with macOS and not allowing unsigned apps. This led to a frenzy of AI back and forth on how to allow unsigned apps on macOS. But nothing worked. The actual fix came the next day after I had time to cool down and think. The issue seemed to be on the UTM side, but what about QEMU? QEMU is the underlying library after all. Maybe we can bypass UTM's USB handling. I also saw that we can pass QEMU arugments directly within UTM settings.
 
-Linux Quirks for SP FlashTools and MTK install
+QEMU [documentation](https://www.qemu.org/docs/master/system/devices/usb.html#connecting-usb-devices)
+
+And adapting this for our use case, adding `0x0e8d` as the vendor id and `0x2000` as the product id, we can tell the QEMU emulator to passthrough the USB device directly.
+
+```bash
+-device usb-host,vendorid=0x0e8d,productid=0x2000
+```
+
+On UTM:
+
+- Check "do not show prompt when usb device is connected."
+- Enable USB 2.0 support in input.
+- Disable host passthrough. We will use QEMU usb passthrough backend.
+
+Problem solved. Now we can connect to the head unit in preloader mode and it will stay connected. The next step is to get the scatter file.
+
+Here are some commands I used to get SP Flash Tools and MTK working on UTM Linux x86 emulator.
 
 ```bash
 #sudo -i is your friend. Root for yourself.
@@ -64,8 +79,6 @@ Linux Quirks for SP FlashTools and MTK install
 
 #apt install libfuse2 to get it to work. Otherwise it said it couldn’t find libfuse
 ```
-
-I will try again later with a battery functional windows machine.
 
 ### Procedure for putting device in boot loop & BROM
 
@@ -95,15 +108,6 @@ This is the place is where you can flash new firmware.
 ```
 
 3. Send ACK - Right now the machine is looping periodically showing up as `MT65xx Preloader` and then disapearing. Prep the machine for the protocol handshake which enters it to the golden land of BROM. Preparation code from MTK as follows. This code has mtk looking for the handshake.
-
-On UTM Linux emulator, check "do not show prompt when usb device is connected."
-Enable USB 2.0 support in input. Disable host passthrough. We will use QEMU usb passthrough backend.
-
-QEMU usb [documentation](https://www.qemu.org/docs/master/system/devices/usb.html#connecting-usb-devices)
-
-```bash
--device usb-host,vendorid=0x0e8d,productid=0x2000
-```
 
 We are in preloader. And without scatter. Lets send the ACK to the device. This is the code that will send the ACK to the device and put it into BROM mode.
 
@@ -409,7 +413,19 @@ struct.error: unpack requires a buffer of 2 bytes
 
 ```
 
+The limitation is now the hardware. I need to try a simple USB A male to USB A male off of amazon.
+
 ### Read
+
+Via MTK client, we can read the boot.img from the head unit. The command is as follows:
+
+```bash
+mtk r boot boot.img
+```
+
+Or via SP Flash Tools, load the scatter file first. If you don't have it, you should be able to create one with the GPT info.
+
+````bash
 
 Open SP Flash Tools
 
@@ -467,4 +483,4 @@ FEATURES
 CPL CPW AAL AAW QTL QTW AML AMW
 VERSION
 34696b9e4ef6323d7b9fcacb91627ec8ecd301dc
-```
+````
